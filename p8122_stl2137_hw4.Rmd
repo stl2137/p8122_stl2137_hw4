@@ -1,0 +1,27 @@
+---
+title: "P8122 Homework 4"
+author: "Sabrina Lin stl2137"
+date: "12/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+### import data
+gard_dat <- read.delim("./gardasil.dat.txt") %>% 
+  janitor::clean_names() %>% 
+  select(-c(x, x_1)) 
+```
+
+# Question 1
+Exclude the outcome from your data. Now produce descriptive statistics of your sample by practice type.
+
+```{r}
+<- gard_dat %>% 
+  select(-c(completed, shots))
+```
+
