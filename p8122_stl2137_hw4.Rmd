@@ -8,20 +8,78 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(tableone)
 ```
 
 ```{r}
 ### import data
 gard_dat <- read.delim("./gardasil.dat.txt") %>% 
   janitor::clean_names() %>% 
-  select(-c(x, x_1)) 
+  select(-c(x, x_1)) %>% 
+  mutate(
+    age_group = as.factor(age_group),
+    race = as.factor(race),
+    completed = as.factor(completed),
+    insurance_type = as.factor(insurance_type),
+    med_assist = as.factor(med_assist),
+    location = as.factor(location),
+    location_type = as.factor(location_type),
+    practice_type = as.factor(practice_type)
+  )
 ```
 
 # Question 1
 Exclude the outcome from your data. Now produce descriptive statistics of your sample by practice type.
 
 ```{r}
-<- gard_dat %>% 
+### excluding outcome from data
+
+gard_sans_outcome_dat <- gard_dat %>% 
   select(-c(completed, shots))
+```
+
+* The following table is stratified by practice type, where 0 = pediatrics, 1 = family practice, 2 = OB-GYN
+
+```{r}
+### descriptive stats by practice type
+
+vars <- c("age", "age_group", "race", "insurance_type", "med_assist", "location", "location_type")
+
+descript_tab <- CreateTableOne(vars = vars, strata = "practice_type", data = gard_sans_outcome_dat)
+print(descript_tab)
+```
+
+* There are a total of 1413 females in the study. 
+
+The levels for each variable are as follows:
+
+  * 515 females received treatment from a pediatric facility (level 0), 365 females received treatment from family practice (level 1), and 533 females received treatment from an OB-GYN (level 2). 
+
+  * 701 females are in the 11 - 17 age group (level 0), and 712 females are in the 18 - 26 age group (level 1). 
+
+  * There are 732 white females (level 0), 443 Black females (level 1), 52 Hispanic females (level 2), and 186 females with either other or unknown ethnicity/race (level 3).
+  
+  * There are 275 females with insurance type level 0 (we are not given the insurance type/there is no metadata; even though it appears to be medical assistance, we do not know if these are the same people for sure), 723 females with private payer insurance type (level 1), 84 females with hospital based insurance type (level 2), and 331 females with military insruance type (level 3). 
+  
+  * 1138 females do not have medical assistance (level 0), and 275 females have medical assistance (level 1). 
+  
+  * 798 females received treatment from Odenton (level 1), 165 females received treatment from White Marsh (level 2), 89 females received treatment from Johns Hopkins (level 3), and 361 females received treatment from Bayview (level 4). 
+  
+# Question 2
+
+Write the protocol of the RCT you would like to conduct to address the question of interest. In particular, (i) specify control and treatment arm and (ii) specify the eligibility criteria according to levels of baseline characteristics so that the assignment to the treatment in this observational study is probabilistic. There is no single one solution. Please, explain your reasoning.
+
+* Since we are interested in seeing whether type of practice where the Gardasil vaccines is taken affects rates of completion, the treatment and control arms should be allocated by practice type. In this case, the treatment arm will be those who received treatment through an OB-GYN, and the control arm will be those who received treatment from a family practice. 
+
+* Looking at the descriptive table and locations, we can see that only location 1 has patients that offers family practice and OB-GYN. Thus, to ensure the probabilistic assumption is not violated, we will only utilize location 1 in this RCT. 
+
+* In addition, to maintain the probabilistic assumption, we will only recruit patients who are in `age_group == 1`, or those coded as being ages 18 to 26. This is because patients who are adults cannot see a pediatrician. 
+
+# Question 3
+
+Following the protocol, exclude subjects that are ineligible. Now conduct descriptive statis- tics of your sample by treatment group in your analytic sample. Compare the characteristics of the study sample with your analytic sample.
+
+```{r}
+
 ```
 
