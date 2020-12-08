@@ -2,15 +2,18 @@
 title: "P8122 Homework 4"
 author: "Sabrina Lin stl2137"
 date: "12/4/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(tableone)
 library(personalized)
 library(MatchIt)
+library(survey)
 ```
 
 ```{r}
@@ -179,6 +182,7 @@ summary(psmatch_greedy, standardize=TRUE)
 print(post_parse_tab, smd = TRUE, test = FALSE)
 
 plot(psmatch_greedy)
+par(mfrow = c(1, 1))
 plot(psmatch_greedy, type = "hist")
 
 ### creating matched data for analysis
@@ -196,6 +200,7 @@ print(post_parse_tab, smd = TRUE, test = FALSE)
 
 ### check balance
 plot(psmatch_optimal)
+par(mfrow = c(1, 1))
 plot(psmatch_optimal, type = "hist")
 
 ### creating matched data for analysis
