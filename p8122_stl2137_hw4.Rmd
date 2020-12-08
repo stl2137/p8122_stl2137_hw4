@@ -17,11 +17,10 @@ library(MatchIt)
 ### import data
 gard_dat <- read.delim("./gardasil.dat.txt") %>% 
   janitor::clean_names() %>% 
-  select(-c(x, x_1)) %>% 
+  dplyr::select(-c(x, x_1)) %>% 
   mutate(
     age_group = as.factor(age_group),
     race = as.factor(race),
-    completed = as.factor(completed),
     insurance_type = as.factor(insurance_type),
     med_assist = as.factor(med_assist),
     location = as.factor(location),
@@ -33,13 +32,6 @@ gard_dat <- read.delim("./gardasil.dat.txt") %>%
 # Question 1
 Exclude the outcome from your data. Now produce descriptive statistics of your sample by practice type.
 
-```{r}
-### excluding outcome from data
-
-gard_sans_outcome_dat <- gard_dat %>% 
-  select(-c(completed, shots))
-```
-
 * The following table is stratified by practice type, where 0 = pediatrics, 1 = family practice, 2 = OB-GYN
 
 ```{r}
@@ -47,7 +39,7 @@ gard_sans_outcome_dat <- gard_dat %>%
 
 vars <- c("age", "age_group", "race", "insurance_type", "med_assist", "location", "location_type")
 
-descript_tab <- CreateTableOne(vars = vars, strata = "practice_type", data = gard_sans_outcome_dat)
+descript_tab <- CreateTableOne(vars = vars, strata = "practice_type", data = gard_dat)
 print(descript_tab)
 ```
 
@@ -85,7 +77,7 @@ Following the protocol, exclude subjects that are ineligible. Now conduct descri
 
 ```{r}
 ### applying inclusion/exclusion criteria
-gard_parsed_dat <- gard_sans_outcome_dat %>% 
+gard_parsed_dat <- gard_dat %>% 
   filter(
     location == 1, ### filtering for location 1 only
     age_group == 1, ### filtering for adults only
@@ -159,9 +151,9 @@ prop.func <- function(x, trt)
   pi.x
 }
 
-check.overlap(x = x,
-              trt = x$practice_type,
-              propensity.func = prop.func)  
+#check.overlap(x = x,
+              #trt = x$practice_type,
+              #propensity.func = prop.func)  
 
 
 # now add density plot with histogram
@@ -213,9 +205,40 @@ psmatch_optimal_dat <- match.data(psmatch_optimal)
 * Looking at the percent balance improvement for both the greedy and optimal matching methods, we can see that greedy matching has slightly better SMD percent balance improvement. Looking at the histograms, the greedy and optimal matching are very similar. Looking into the eQQ plots, we can see that the greedy matching moves more of the matched observations inside the ideal boundaries (particularly for `race1`). Thus, we will utilize greedy matching. 
 
 # Question 6 
-Using your matches from Question (5), estimate the average causal effect of treatment among the treated (ATT) on rates of vaccination regimen completion. Give a point estimate, a confi- dence interval, and a p-value for whether it had any effect, and interpret these results in context.
+Using your matches from Question (5), estimate the average causal effect of treatment among the treated (ATT) on rates of vaccination regimen completion. Give a point estimate, a confidence interval, and a p-value for whether it had any effect, and interpret these results in context.
 
 ```{r}
+psmatch_greedy_mod <- svyglm(completed ~ practice_type + age + race + insurance_type + med_assist,
+                             design = svydesign(~ 1, weights = ~ weights,data=psmatch_greedy_dat))
+sum_greedy_mod <-summary(psmatch_greedy_mod)
 
+### uppper CI
+UCI <- sum_greedy_mod$coefficients[2,1] + 1.96*sum_greedy_mod$coefficients[2,2]
+
+### lower CI
+LCI <- sum_greedy_mod$coefficients[2,1] - 1.96*sum_greedy_mod$coefficients[2,2]
 ```
 
+* The estimate for `practice_type` is `r sum_greedy_mod$coefficients[2,1]` (`r LCI`,`r UCI`), with a p-value of `r 0.09880634`, meaning that it is not significant when looking at $\alpha = 0.05$. Thus, practice type does not have any effect on the completion of the Gardasil shots. 
+
+# Question 7 
+Estimate the average causal effect of treatment among the controls (ATC) and the treated (ATT) now using nearest neighbour match on the PS score, one control matched with one treated (1:1), without replacement or calipers. Combine the estimates from ATC and ATT to estimate the average treatment effect on rates of vaccination regimen completion. Interpret your results.
+
+```{r}
+### same as what was completed in part 5 and 6
+psmatch_greedy_att <- matchit(practice_type ~ age + race + insurance_type + med_assist, data = x, distance = "logit", method = "nearest", discard = "control", estimand = "ATT")
+psmatch_greed_att_dat <- match.data(psmatch_greedy_att)
+
+psmatch_greed_att_mod <- svyglm(completed ~ practice_type + age + race + insurance_type + med_assist, design = svydesign(~1, weights = ~ weights, data = psmatch_greed_att_dat))
+sum_greed_att_mod <- summary(psmatch_greed_att_mod)
+```
+
+```{r}
+psmatch_greedy_atc <- matchit(practice_type ~ age + race + insurance_type + med_assist, data = x, distance = "logit", method = "nearest", estimand = "ATC")
+psmatch_greed_atc_dat <- match.data(psmatch_greedy_atc)
+
+psmatch_greed_atc_mod <- svyglm(completed ~ practice_type + age + race + insurance_type + med_assist, design = svydesign(~1, weights = ~ weights, data = psmatch_greed_atc_dat))
+sum_greed_atc_mod <- summary(psmatch_greed_atc_mod)
+```
+
+* The ATE on rates of vaccination completion based off practice type is `r sum_greed_att_mod$coefficients[2,1] + sum_greed_atc_mod$coefficients[2,1]`. Thus, there is a average treatment effect of vaccination appears to be better for those who go to an OB-GYN than for those who go to a family practice. 
