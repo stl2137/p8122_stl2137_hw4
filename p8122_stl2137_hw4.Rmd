@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tableone)
 library(personalized)
+library(MatchIt)
 ```
 
 ```{r}
@@ -76,6 +77,8 @@ Write the protocol of the RCT you would like to conduct to address the question 
 
 * In addition, to maintain the probabilistic assumption, we will only recruit patients who are in `age_group == 1`, or those coded as being ages 18 to 26. This is because patients who are adults cannot see a pediatrician, and most adolescent women do not see an OB-GYN. 
 
+* Making these stringent inclusion/exclusion criteria will help increase the internal validity of future matching in this assignment, but it will make our findings less generalizable to the population. 
+
 # Question 3
 
 Following the protocol, exclude subjects that are ineligible. Now conduct descriptive statis- tics of your sample by treatment group in your analytic sample. Compare the characteristics of the study sample with your analytic sample.
@@ -100,7 +103,7 @@ post_parse_tab <- CreateTableOne(vars = vars, strata = "practice_type", data = g
 print(post_parse_tab)
 ```
 
-```{r}
+```{r, eval=FALSE}
 print(descript_tab)
 print(post_parse_tab)
 ```
@@ -171,4 +174,48 @@ check.overlap(x = x,
 * Based off the density plot, we can see that the covariate balance looks decent, as a large portion of each treatment group's propensity score density overlaps each other. That being said, better covariate balance could be obtained, as certain parts of the densities do not overlap each other. 
 
 # Question 5
+Use matching to improve covariate balance. Include your thought process, how you ultimately decide to do the matching, and a plot or table showing improvement in covariate balance.
+
+```{r}
+### Implement nearest neighbor matching on the propensity score (NN match on PS score: 1:1, greedy, without replacement or calipers)
+
+psmatch_greedy <- matchit(practice_type ~ age + race + insurance_type + med_assist,
+                           distance = "logit", method = "nearest", discard = "control", data = x)
+
+### comparing nearest neighbor matching to original parsed data
+summary(psmatch_greedy, standardize=TRUE)
+print(post_parse_tab, smd = TRUE, test = FALSE)
+
+plot(psmatch_greedy)
+plot(psmatch_greedy, type = "hist")
+
+### creating matched data for analysis
+psmatch_greedy_dat <- match.data(psmatch_greedy)
+```
+
+```{r}
+### optimal matching on PS score: 1:1, without replacement or calipers
+psmatch_optimal <- matchit(practice_type ~ age + race + insurance_type + med_assist,
+                           distance = "logit", method = "optimal", data = x)
+
+### comparing optimal matching to original parsed data
+sum_optimal <- summary(psmatch_optimal, standardize = TRUE)
+print(post_parse_tab, smd = TRUE, test = FALSE)
+
+### check balance
+plot(psmatch_optimal)
+plot(psmatch_optimal, type = "hist")
+
+### creating matched data for analysis
+psmatch_optimal_dat <- match.data(psmatch_optimal)
+```
+
+* Looking at the percent balance improvement for both the greedy and optimal matching methods, we can see that greedy matching has slightly better SMD percent balance improvement. Looking at the histograms, the greedy and optimal matching are very similar. Looking into the eQQ plots, we can see that the greedy matching moves more of the matched observations inside the ideal boundaries (particularly for `race1`). Thus, we will utilize greedy matching. 
+
+# Question 6 
+Using your matches from Question (5), estimate the average causal effect of treatment among the treated (ATT) on rates of vaccination regimen completion. Give a point estimate, a confi- dence interval, and a p-value for whether it had any effect, and interpret these results in context.
+
+```{r}
+
+```
 
